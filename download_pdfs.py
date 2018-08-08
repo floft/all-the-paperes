@@ -3,6 +3,8 @@
 Script to download a whole bunch of ML and AI papers from 2014-2018
 """
 import os
+import re
+import json
 import time
 import random
 import lxml.html
@@ -66,12 +68,14 @@ conferences_add_pdf = {
 }
 
 conferences_hard = {
-    # These will take work
+    # These will take more work
     'ICLR': {
         2015: 'https://iclr.cc/archive/www/doku.php%3Fid=iclr2015:accepted-main.html', # point to arXiv
         2016: 'https://iclr.cc/archive/www/doku.php%3Fid=iclr2016:accepted-main.html', # point to arXiv
-        2017: 'https://openreview.net/group?id=ICLR.cc/2017/conference',
-        2018: 'https://openreview.net/group?id=ICLR.cc/2018/Conference'
+        #2017: 'https://openreview.net/group?id=ICLR.cc/2017/conference',
+        #2018: 'https://openreview.net/group?id=ICLR.cc/2018/Conference',
+        2017: 'https://openreview.net/notes?invitation=ICLR.cc%2F2017%2Fconference%2F-%2Fpaper.*%2Facceptance', # JSON data
+        2018: 'https://openreview.net/notes?invitation=ICLR.cc%2F2018%2Fconference%2F-%2Fpaper.*%2Facceptance', # JSON data
     },
     'AAAI': {
         2014: 'https://www.aaai.org/ocs/index.php/AAAI/AAAI14/schedConf/presentations',
@@ -80,15 +84,17 @@ conferences_hard = {
         2017: 'https://www.aaai.org/ocs/index.php/AAAI/AAAI17/schedConf/presentations',
         2018: 'https://www.aaai.org/ocs/index.php/AAAI/AAAI18/schedConf/presentations'
     },
-    'KDD': {
-        2015: 'http://www.kdd.org/kdd2015/toc.html',
-        2016: 'http://www.kdd.org/kdd2016/program/accepted-papers',
-        2017: 'http://www.kdd.org/kdd2017/accepted-papers'
-    },
-    'ECCV': {
-        2014: 'http://eccv2014.org/proceedings/',
-        2016: 'http://www.eccv2016.org/proceedings/'
-    },
+    # Not worth it -- ACM requires downloading immediately to not get forbidden and doesn't look like there's GAN papers
+    #'KDD': {
+    #    2015: 'http://www.kdd.org/kdd2015/toc.html',
+    #    2016: 'http://www.kdd.org/kdd2016/program/accepted-papers',
+    #    2017: 'http://www.kdd.org/kdd2017/accepted-papers'
+    #},
+    # Springer ones would be difficult
+    #'ECCV': {
+    #    2014: 'http://eccv2014.org/proceedings/',
+    #    2016: 'http://www.eccv2016.org/proceedings/'
+    #},
     #International Journal of Computer Vision (IJCV) 
     #Machine Learning (Springer) https://link.springer.com/journal/10994
 }
@@ -102,14 +108,17 @@ def get_filename(s):
 
 def downloadFile(url,
         filename,
+        referer=None,
         useragent='Mozilla/5.0 (X11; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0'):
     if not os.path.exists(filename):
         print("Downloading", url, "to", filename)
 
-        req = urllib.request.Request(
-            url, data=None, headers={
-                'User-Agent': useragent
-            })
+        headers = { 'User-Agent': useragent }
+
+        if referer is not None:
+            headers["Referer"] = referer
+
+        req = urllib.request.Request(url, data=None, headers=headers)
 
         connection = urllib.request.urlopen(req)
         data = connection.read()
@@ -120,9 +129,10 @@ def downloadFile(url,
     else:
         print("Skipping", url, ". Exists: ", filename)
 
-def getLinks(url, cachedir='cache'):
+def getLinks(url, cachedir='cache', search='//a/@href', referer=None, raw=False):
     """
     Get all the links on a page
+    Also return raw content if desired
 
     Note: caches webpage
     """
@@ -135,7 +145,7 @@ def getLinks(url, cachedir='cache'):
 
     # Download from web it cache doesn't exist
     if not os.path.exists(cache):
-        downloadFile(url, cache)
+        downloadFile(url, cache, referer)
 
     assert os.path.exists(cache), "Tried to download file and failed."
 
@@ -144,13 +154,16 @@ def getLinks(url, cachedir='cache'):
         data = f.read()
 
     # Get URLs
-    dom = lxml.html.fromstring(data.decode('utf-8'))
+    dom = lxml.html.fromstring(data)
     links = []
 
-    for link in dom.xpath('//a/@href'):
+    for link in dom.xpath(search):
         links.append(link)
 
-    return links
+    if raw:
+        return links, data
+    else:
+        return links
 
 if __name__ == '__main__':
     prepend="" # e.g. ICML_2015_
@@ -206,7 +219,58 @@ if __name__ == '__main__':
                     fname = prepend + get_filename(abspath)
                     toDownload.append((abspath, os.path.join(downloaddir, fname)))
     
-    # TODO the ones that require some effort
+    # The ones that require some effort
+    acmMatch = re.compile(r"window\.location\.replace\('(.*)'\);")
+
+    for conf, years in conferences_hard.items():
+        for year, url in years.items():
+            prepend = conf+"_"+str(year)+"_"
+
+            # OpenReview papers (e.g. ICLR)
+            if "openreview.net/notes" in url:
+                _, rawData = getLinks(url, raw=True)
+                j = json.loads(rawData.decode('utf-8'))
+
+                for entry in j["notes"]:
+                    if "Accept" in entry["content"]["decision"]:
+                        toDownload.append(("https://openreview.net/pdf?id="+entry["id"], prepend+entry["id"]+".pdf"))
+
+            elif "AAAI" in conf:
+                links = getLinks(url, search="//a[contains(@class, 'file')]/@href")
+
+                for link in links:
+                    # For AAAI papers, make a substitution in the link
+                    if "paper/view" in link:
+                        abspath = urljoin(url.strip(), link.strip().replace("paper/view","paper/download")) # get download URL
+                        fname = prepend + get_filename(abspath) + ".pdf"
+                        toDownload.append((abspath, os.path.join(downloaddir, fname)))
+            else:
+                links = getLinks(url)
+
+                for link in links:
+                    # If it links to arXiv, then download the PDF on arXiv
+                    # Note: this doesn't download it if the latest arXiv version doesn't provide a PDF
+                    if "arxiv.org" in link:
+                        arXivLinks = getLinks(link)
+
+                        for arXivLink in arXivLinks:
+                            if "pdf/" in arXivLink:
+                                abspath = urljoin(link.strip(), arXivLink.strip()) # make PDF link relative to arXiv URL
+                                fname = prepend + get_filename(abspath) + ".pdf"
+                                toDownload.append((abspath, os.path.join(downloaddir, fname)))
+                    # For KDD papers that link to ACM
+                    """
+                    elif "KDD" in conf and "dl.acm.org" in link:
+                        pass
+                        _, acmData = getLinks(link, raw=True, referer=url) # Gives different page without referer
+                        match = acmMatch.search(acmData.decode('utf-8')) # PDF link is in Javascript code
+                        if match is not None:
+                            pdf = match.group(1)
+                            abspath = urljoin(url.strip(), pdf.strip())
+                            fname = prepend + get_filename(abspath)
+                            downloadFile(abspath, os.path.join(downloaddir, fname))
+                    """
+
 
     # Get the list of ones that errored
     error_files = []
