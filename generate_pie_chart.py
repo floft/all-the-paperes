@@ -2,9 +2,10 @@
 """
 From the pdfgrep output data, generate a pie chart
 """
+import os
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import pandas as pd
 
 def replace(df, replacements):
     """
@@ -108,6 +109,9 @@ if __name__ == '__main__':
     grepGAN = 'grep/gan.txt'
     grepTL = 'grep/tl.txt'
 
+    # Where to save lists
+    listdir = 'list'
+
     # Read data
     df_gan = pd.read_csv(grepGAN, sep='\x00', names=['Filename','Match'])
     df_tl = pd.read_csv(grepTL, sep='\x00', names=['Filename','Term'])
@@ -145,18 +149,20 @@ if __name__ == '__main__':
     fracs = [c/gantlCount for c in termCounts.values()]
     labels = termCounts.keys()
     fracs, labels = zip(*sorted(zip(fracs, labels), reverse=True)) # Sort
-    pie(fracs, labels, "pie")
+    #pie(fracs, labels, "pie")
 
     # Pie chart showing of the GAN papers how many include any of the TL terms
-    ganCount = len(df_gan['Filename'].unique())
-    tlCount = len(df_tl['Filename'].unique())
+    gan = df_gan['Filename'].unique()
+    tl = df_tl['Filename'].unique()
+    ganCount = len(gan)
+    tlCount = len(tl)
     print("GAN Papers:", ganCount)
     print("TL Papers:", tlCount)
     print("GAN & TL Papers:", gantlCount)
 
     includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
     includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
-    pie(includeTermsFracs, includeTermsLabels, "pie_terms")
+    #pie(includeTermsFracs, includeTermsLabels, "pie_terms")
 
     title1="GAN Papers Mentioning Transfer Learning"
     title2="Transfer Learning Terms"
@@ -164,6 +170,20 @@ if __name__ == '__main__':
             includeTermsFracs, includeTermsLabels, title1,
             fracs, labels, title2,
             "pie_combined")
+
+    # Output filenames for each of them
+    if not os.path.exists(listdir):
+        os.makedirs(listdir)
+
+    with open(os.path.join(listdir, 'overlap.txt'), 'w') as f:
+        for e in papers:
+            f.write(e+'\n')
+    with open(os.path.join(listdir, 'gan.txt'), 'w') as f:
+        for e in gan:
+            f.write(e+'\n')
+    with open(os.path.join(listdir, 'tl.txt'), 'w') as f:
+        for e in tl:
+            f.write(e+'\n')
 
     """
     pie(both['Term'], save_name='pie', pandas=True)

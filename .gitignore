@@ -1,6 +1,7 @@
 cache/
 pdfs/
 grep/
+list/
 *.png
 *.pdf
 *.txt
