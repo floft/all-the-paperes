@@ -6,3 +6,7 @@ variety of conferences and journals.
 Second, pdfgrep through the papers to find the ones about GANs and relate
 in some way to transfer learning. We'll make a pie chart about how many
 papers have overlap between GANs and various types of transfer learning.
+
+    ./download_pdfs.py
+    ./grep_pdfs.sh
+    ./generate_pie_chart.py

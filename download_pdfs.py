@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Script to download a whole bunch of ML and AI papers from 2014-2018
 """
