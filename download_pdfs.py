@@ -234,7 +234,8 @@ if __name__ == '__main__':
                 for entry in j["notes"]:
                     if "Accept" in entry["content"]["decision"]:
                         # Looks like replyto and forum link to the ID of the actual PDF
-                        toDownload.append(("https://openreview.net/pdf?id="+entry["replyto"], prepend+entry["replyto"]+".pdf"))
+                        toDownload.append(("https://openreview.net/pdf?id="+entry["replyto"],
+                            os.path.join(downloaddir, prepend+entry["replyto"]+".pdf")))
 
             elif "AAAI" in conf:
                 links = getLinks(url, search="//a[contains(@class, 'file')]/@href")
