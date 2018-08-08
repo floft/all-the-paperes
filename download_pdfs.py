@@ -3,9 +3,11 @@
 Script to download a whole bunch of ML and AI papers from 2014-2018
 """
 import os
+import time
 import random
 import lxml.html
 import urllib.request
+import urllib.error
 from hashlib import md5
 from urllib.parse import urlparse, urljoin
 from tqdm import tqdm # progress bar
@@ -153,6 +155,7 @@ def getLinks(url, cachedir='cache'):
 if __name__ == '__main__':
     prepend="" # e.g. ICML_2015_
     downloaddir='pdfs'
+    errors="error.txt"
 
     # Create download directory
     if not os.path.exists(downloaddir):
@@ -205,10 +208,30 @@ if __name__ == '__main__':
     
     # TODO the ones that require some effort
 
+    # Get the list of ones that errored
+    error_files = []
+    if os.path.exists(errors):
+        with open(errors, 'r') as f:
+            for line in f:
+                error_files.append(line.strip())
+
+    # Throw out all that were already downloaded
+    notDownloaded = []
+
+    for link, fname in toDownload:
+        if not os.path.exists(fname) and link not in error_files:
+            notDownloaded.append((link, fname))
+
     # Now shuffle and then download. This supposedly will make it so we don't
     # download everything from the same site at the same time. Hopefully make
     # me not get blocked.
-    random.shuffle(toDownload)
+    random.shuffle(notDownloaded)
 
-    for link, fname in tqdm(toDownload):
-        downloadFile(link, fname)
+    for link, fname in tqdm(notDownloaded):
+        try:
+            downloadFile(link, fname)
+        except urllib.error.HTTPError:
+            print("Error downloading", fname)
+            with open(errors, 'a') as f:
+                f.write(link+'\n')
+            time.sleep(0.5)
