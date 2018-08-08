@@ -171,13 +171,23 @@ if __name__ == '__main__':
             fracs, labels, title2,
             "pie_combined")
 
+    #
     # Output filenames for each of them
+    #
     if not os.path.exists(listdir):
         os.makedirs(listdir)
 
+    # When a single PDF (multiple rows) has multiple terms, join them to be
+    # like: ("pdfName", "term1, term2, term3")
+    grouped = df_tl.drop_duplicates().groupby('Filename').apply(lambda x: pd.Series({
+            'Term': ', '.join(x['Term'].sort_values())
+        })).reset_index()
+    both_grouped = grouped.loc[grouped['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    assert len(both_grouped) == len(papers), "Somehow grouped length different than overlap papers length"
+
     with open(os.path.join(listdir, 'overlap.txt'), 'w') as f:
-        for e in papers:
-            f.write(e+'\n')
+        for index, row in both_grouped.iterrows():
+            f.write(row['Filename']+'\t'+row['Term']+'\n')
     with open(os.path.join(listdir, 'gan.txt'), 'w') as f:
         for e in gan:
             f.write(e+'\n')
@@ -190,11 +200,5 @@ if __name__ == '__main__':
 
     # Pie chart of what TL terms are included in each GAN paper that mentions at least one
     #
-    # When a single PDF (multiple rows) has multiple terms, join them to be
-    # like: ("pdfName", "term1, term2, term3")
-    grouped = df_tl.drop_duplicates().groupby('Filename').apply(lambda x: pd.Series({
-            'Term': ', '.join(x['Term'].sort_values())
-        })).reset_index()
-    both = grouped.loc[grouped['Filename'].isin(df_gan['Filename'])].drop_duplicates()
     pie(both['Term'], save_name='pie_set', pandas=True)
     """
