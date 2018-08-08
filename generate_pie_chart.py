@@ -169,7 +169,7 @@ if __name__ == '__main__':
     pieCombined(
             includeTermsFracs, includeTermsLabels, title1,
             fracs, labels, title2,
-            "pie_combined")
+            "pie")
 
     #
     # Output filenames for each of them
