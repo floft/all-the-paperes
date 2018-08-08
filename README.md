@@ -22,11 +22,11 @@ Optionally, look through all the overlap papers.
 
 ## Results
 
-| *Papers* | *Number* |
-|:---------|:---------
-| Total    | 16,644   |
-| GAN      | 500      |
-| TL       | 1,173    |
-| GAN & TL | 91       |
+| **Topic**  | **Number of Papers** |
+|:-----------|:---------------------|
+| GAN        | 500                  |
+| TL         | 1,173                |
+| GAN & TL   | 91                   |
+| *(Total)*  | 16,644               |
 
 [![Pie Chart](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)
