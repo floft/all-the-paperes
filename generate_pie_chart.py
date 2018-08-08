@@ -54,7 +54,8 @@ def pie(fracs, labels=None, save_name=None, pandas=False, figsize=(7,7)):
         fig.savefig(save_name+'.png', bbox_inches='tight')
         fig.savefig(save_name+'.pdf', bbox_inches='tight')
 
-def pieCombined(fracs1, labels1, fracs2, labels2, save_name=None, figsize=(10,5)):
+def pieCombined(fracs1, labels1, title1, fracs2, labels2, title2,
+        save_name=None, figsize=(10,5)):
     """ Generate and save 2 pie plots together using subplots """
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
     plt.tight_layout()
@@ -71,10 +72,10 @@ def pieCombined(fracs1, labels1, fracs2, labels2, save_name=None, figsize=(10,5)
 
     patches, texts, autotexts = ax1.pie(
             fracs1, radius=1.2, autopct='%.0f%%',
-            startangle=0, pctdistance=0.6)
-    #ax1.set_title("GAN papers including TL terms")
+            startangle=90, pctdistance=0.6)
+    ax1.set_title(title1, weight='bold', fontsize=16)
     ax1.legend(patches, labels1,
-            bbox_to_anchor=(0,1), loc="upper left", fontsize=12,
+            bbox_to_anchor=(0,0.1), loc="lower left", fontsize=12,
                bbox_transform=fig.transFigure)
     for t in texts:
         t.set_size('smaller')
@@ -83,9 +84,10 @@ def pieCombined(fracs1, labels1, fracs2, labels2, save_name=None, figsize=(10,5)
 
     patches, texts, autotexts = ax2.pie(
             fracs2, radius=1.2, autopct='%.0f%%',
-            startangle=65)
+            startangle=90)
+    ax2.set_title(title2, weight='bold', fontsize=16)
     ax2.legend(patches, labels2,
-            bbox_to_anchor=(0.5,1.1), loc="upper left", fontsize=12,
+            bbox_to_anchor=(0.5,0.0), loc="lower left", fontsize=12,
                bbox_transform=fig.transFigure)
     for t in texts:
         t.set_size('smaller')
@@ -156,9 +158,11 @@ if __name__ == '__main__':
     includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
     pie(includeTermsFracs, includeTermsLabels, "pie_terms")
 
+    title1="GAN Papers Mentioning Transfer Learning"
+    title2="Transfer Learning Terms"
     pieCombined(
-            includeTermsFracs, includeTermsLabels,
-            fracs, labels,
+            includeTermsFracs, includeTermsLabels, title1,
+            fracs, labels, title2,
             "pie_combined")
 
     """
