@@ -2,7 +2,7 @@ All The Papers
 ==============
 ## Running
 First, download a whole bunch of ML and AI papers from 2014-2018 from a
-variety of conferences and journals.
+variety of conferences and journals. *Warning: it's over 25 GiB of PDFs.*
 
     ./download_pdfs.py
 
@@ -27,6 +27,6 @@ Optionally, look through all the overlap papers.
 | GAN        | 500                  |
 | TL         | 1,173                |
 | GAN & TL   | 91                   |
-| *(Total)*  | 16,644               |
+| *(Total)*  | 16,644 (25.3 GiB)    |
 
 [![Pie Chart](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)
