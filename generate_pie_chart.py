@@ -2,6 +2,8 @@
 """
 From the pdfgrep output data, generate a pie chart
 """
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import pandas as pd
 
 def replace(df, replacements):
@@ -19,7 +21,87 @@ def pandasSetPrint():
     pd.options.display.max_columns = None
     pd.options.display.expand_frame_repr = False
 
+def pie(fracs, labels=None, save_name=None, pandas=False, figsize=(7,7)):
+    """
+    Generate and save pie plot
+
+    If pandas=True:
+        pie(df, save_name='pie', pandas=True)
+    If pandas=False:
+        pie(fracs, labels, 'pie')
+    """
+    if pandas:
+        fig = plt.figure()
+        df.value_counts().plot.pie(
+                figsize=figsize,
+                radius=0.7,
+                autopct='%.0f%%')
+    else:
+        fig = plt.figure(figsize=figsize)
+        patches, texts, autotexts = plt.pie(fracs,
+                labels=labels,
+                radius=0.75,
+                autopct='%.0f%%')
+        #plt.legend(patches, labels, loc="best")
+
+    ax = fig.gca()
+    ax.set_title("")
+    ax.set_ylabel("")
+    ax.set_xlabel("")
+    fig = ax.get_figure()
+
+    if save_name is not None:
+        fig.savefig(save_name+'.png', bbox_inches='tight')
+        fig.savefig(save_name+'.pdf', bbox_inches='tight')
+
+def pieCombined(fracs1, labels1, fracs2, labels2, save_name=None, figsize=(10,5)):
+    """ Generate and save 2 pie plots together using subplots """
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    plt.tight_layout()
+
+    ax1.axis("equal")
+    ax2.axis("equal")
+
+    #pie = plt.pie(df, startangle=0, autopct='%1.0f%%', pctdistance=0.9, radius=1.2)
+    #labels=df.index.unique()
+    #plt.title('Pie Chart Demonstration', weight='bold', size=14)
+    #plt.legend(pie[0],labels, bbox_to_anchor=(1,0.5), loc="center right", fontsize=10,
+    #                   bbox_transform=plt.gcf().transFigure)
+    #plt.subplots_adjust(left=0.0, bottom=0.1, right=0.85)
+
+    patches, texts, autotexts = ax1.pie(
+            fracs1, radius=1.2, autopct='%.0f%%',
+            startangle=0, pctdistance=0.6)
+    #ax1.set_title("GAN papers including TL terms")
+    ax1.legend(patches, labels1,
+            bbox_to_anchor=(0,1), loc="upper left", fontsize=12,
+               bbox_transform=fig.transFigure)
+    for t in texts:
+        t.set_size('smaller')
+    for t in autotexts:
+        t.set_size('x-large')
+
+    patches, texts, autotexts = ax2.pie(
+            fracs2, radius=1.2, autopct='%.0f%%',
+            startangle=65)
+    ax2.legend(patches, labels2,
+            bbox_to_anchor=(0.5,1.1), loc="upper left", fontsize=12,
+               bbox_transform=fig.transFigure)
+    for t in texts:
+        t.set_size('smaller')
+    for t in autotexts:
+        t.set_size('x-large')
+        percent = float(t.get_text().replace('%',''))
+        if percent < 2:
+            t.set_text('')
+
+    if save_name is not None:
+        fig.savefig(save_name+'.png', bbox_inches='tight', pad_inches=0)
+        fig.savefig(save_name+'.pdf', bbox_inches='tight', pad_inches=0)
+
 if __name__ == '__main__':
+    pandasSetPrint()
+
     # Paths to pdfgrep output
     grepGAN = 'grep/gan.txt'
     grepTL = 'grep/tl.txt'
@@ -34,26 +116,61 @@ if __name__ == '__main__':
         'multi task learning':    'multi-task learning',
         'multidomain learning':   'multi-domain learning',
         'multi domain learning':  'multi-domain learning',
+        'self taught learning':  'self-taught learning',
         'co-variate shift':       'covariate shift',
         'sample selection bias':  'sample-selection bias',
         'life long learning':     'life-long learning',
         })
 
-    #print(df_tl.groupby(''))
-    #print(df_tl)
-
+    #
     # Get GAN papers that also mention TL terms
-    pandasSetPrint()
-    both = df_tl.loc[df_tl['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    #
 
-    # Pie chart
-    ax = both['Term'].value_counts().plot.pie(
-            figsize=(7, 7),
-            radius=0.7,
-            autopct='%.0f%%')
-    ax.set_title("")
-    ax.set_ylabel("")
-    ax.set_xlabel("")
-    fig = ax.get_figure()
-    fig.savefig('pie.png')
-    fig.savefig('pie.pdf')
+    # Pie chart of how many GAN papers include a mention of each of these terms
+    both = df_tl.loc[df_tl['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    papers = both['Filename'].unique()
+    gantlCount = len(papers)
+    terms = both['Term'].unique()
+
+    termCounts = {}
+    for t in terms:
+        termCounts[t] = 0
+
+    for p in papers:
+        for t in both[both['Filename']==p]['Term']:
+            termCounts[t] += 1
+
+    fracs = [c/gantlCount for c in termCounts.values()]
+    labels = termCounts.keys()
+    fracs, labels = zip(*sorted(zip(fracs, labels), reverse=True)) # Sort
+    pie(fracs, labels, "pie")
+
+    # Pie chart showing of the GAN papers how many include any of the TL terms
+    ganCount = len(df_gan['Filename'].unique())
+    tlCount = len(df_tl['Filename'].unique())
+    print("GAN Papers:", ganCount)
+    print("TL Papers:", tlCount)
+    print("GAN & TL Papers:", gantlCount)
+
+    includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
+    includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
+    pie(includeTermsFracs, includeTermsLabels, "pie_terms")
+
+    pieCombined(
+            includeTermsFracs, includeTermsLabels,
+            fracs, labels,
+            "pie_combined")
+
+    """
+    pie(both['Term'], save_name='pie', pandas=True)
+
+    # Pie chart of what TL terms are included in each GAN paper that mentions at least one
+    #
+    # When a single PDF (multiple rows) has multiple terms, join them to be
+    # like: ("pdfName", "term1, term2, term3")
+    grouped = df_tl.drop_duplicates().groupby('Filename').apply(lambda x: pd.Series({
+            'Term': ', '.join(x['Term'].sort_values())
+        })).reset_index()
+    both = grouped.loc[grouped['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    pie(both['Term'], save_name='pie_set', pandas=True)
+    """
