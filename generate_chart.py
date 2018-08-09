@@ -222,9 +222,16 @@ if __name__ == '__main__':
     #pie(fracs, labels, "pie")
     barplot([f*100 for f in fracs], labels, save_name="bar")
 
+    # Print counts of papers
     print("GAN Papers:", ganCount)
     print("TL Papers:", tlCount)
     print("GAN & TL Papers:", gantlCount)
+
+    # Print percentages
+    print()
+    print("Percent of GAN Papers Including Terms")
+    for i in range(len(fracs)):
+        print(" ",labels[i],"-","%.1f%%"%(fracs[i]*100))
 
     # Pie chart showing of the GAN papers how many include any of the TL terms
     includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
