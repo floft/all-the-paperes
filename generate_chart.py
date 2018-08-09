@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-From the pdfgrep output data, generate a pie chart
+From the pdfgrep output data, generate a chart
 """
 import os
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -10,9 +11,12 @@ from matplotlib.gridspec import GridSpec
 def replace(df, replacements):
     """
     If replacements={'s': 'r'} then replace all 's' with 'r' in dataframe df.
+
+    Note: case refers to case-sensitivity, which by default is False, i.e.
+    in the above example 'S' would also be replaced with 'r'.
     """
     for s, r in replacements.items():
-        df = df.str.replace(s, r)
+        df = df.str.lower().replace(s, r)
 
     return df
 
@@ -102,6 +106,67 @@ def pieCombined(fracs1, labels1, title1, fracs2, labels2, title2,
         fig.savefig(save_name+'.png', bbox_inches='tight', pad_inches=0)
         fig.savefig(save_name+'.pdf', bbox_inches='tight', pad_inches=0)
 
+def cap(s):
+    """
+    Capitalize only the first letter of a string
+    
+    s.capitalize() and s.title() make the non-first letters of words lowercase.
+    I don't want to change anything other than the first letter.
+    """
+    return s[0].upper() + s[1:]
+
+def remzero(num):
+    """
+    Remove zero at front of float
+    """
+    s = '%.1f' % num
+    s = s.replace(".00", ".0")
+    return s[1:] if s[0] == "0" else s
+
+def autolabel(ax, rects, yerr=None):
+    """
+    Attach a text label above each bar displaying its height
+    
+    From: https://matplotlib.org/examples/api/barchart_demo.html
+    """
+    for i, rect in enumerate(rects):
+        height = rect.get_height()
+        yerrh = 0
+        
+        if yerr:
+            yerrh = yerr[i]
+        
+        ax.text(rect.get_x() + rect.get_width()/2., 1.005*height + yerrh,
+                #remzero(height),
+                '%.1f' % height,
+                ha='center', va='bottom')
+
+def barplot(fracs, labels, save_name=None):
+    assert len(fracs) == len(labels)
+    colors = ["xkcd:orange", "xkcd:teal", "xkcd:darkgreen", "xkcd:orchid", "xkcd:blue", "xkcd:indigo"]
+    
+    fig, ax = plt.subplots(1,1,figsize=(8, 4))
+    rects = []
+    margin = 0.02
+    width = 1 - margin - 0.02
+
+    # Plot x values
+    i = 0 # We only have one set of bars
+    n = len(labels)
+    x = np.array(range(n), dtype=np.float)
+    rects.append(ax.bar(x + i*width + i*margin, fracs, width))
+    autolabel(ax, rects[-1])
+    ax.set_ylim([0,max(fracs)+1])
+        
+    plt.xticks(x, labels, rotation=40, fontsize=12)
+    #ax.set_xticks(x + width) # Offset if more than one set
+    plt.ylabel("%")
+    plt.title("Percent of GAN Papers Including Terms")
+
+    if save_name is not None:
+        plt.savefig(save_name+".png", bbox_inches='tight')
+        plt.savefig(save_name+".pdf", bbox_inches='tight')
+
 if __name__ == '__main__':
     pandasSetPrint()
 
@@ -131,6 +196,10 @@ if __name__ == '__main__':
     #
     # Get GAN papers that also mention TL terms
     #
+    gan = df_gan['Filename'].unique()
+    tl = df_tl['Filename'].unique()
+    ganCount = len(gan)
+    tlCount = len(tl)
 
     # Pie chart of how many GAN papers include a mention of each of these terms
     both = df_tl.loc[df_tl['Filename'].isin(df_gan['Filename'])].drop_duplicates()
@@ -146,20 +215,18 @@ if __name__ == '__main__':
         for t in both[both['Filename']==p]['Term']:
             termCounts[t] += 1
 
-    fracs = [c/gantlCount for c in termCounts.values()]
+    fracs = [c/ganCount for c in termCounts.values()]
     labels = termCounts.keys()
+    labels = [cap(l) for l in labels]
     fracs, labels = zip(*sorted(zip(fracs, labels), reverse=True)) # Sort
     #pie(fracs, labels, "pie")
+    barplot([f*100 for f in fracs], labels, save_name="bar")
 
-    # Pie chart showing of the GAN papers how many include any of the TL terms
-    gan = df_gan['Filename'].unique()
-    tl = df_tl['Filename'].unique()
-    ganCount = len(gan)
-    tlCount = len(tl)
     print("GAN Papers:", ganCount)
     print("TL Papers:", tlCount)
     print("GAN & TL Papers:", gantlCount)
 
+    # Pie chart showing of the GAN papers how many include any of the TL terms
     includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
     includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
     #pie(includeTermsFracs, includeTermsLabels, "pie_terms")

@@ -11,10 +11,10 @@ in some way to transfer learning.
 
     ./grep_pdfs.sh
 
-Finally, make a pie chart about how many papers have overlap between GANs and
+Finally, make a chart about how many papers have overlap between GANs and
 various types of transfer learning.
 
-    ./generate_pie_chart.py
+    ./generate_chart.py
 
 Optionally, look through all the overlap papers.
 
@@ -25,8 +25,8 @@ Optionally, look through all the overlap papers.
 | **Topic**  | **Number of Papers** |
 |:-----------|:---------------------|
 | GAN        | 500                  |
-| TL         | 1,173                |
-| GAN & TL   | 91                   |
+| TL         | 1,210                |
+| GAN & TL   | 92                   |
 | *(Total)*  | 16,644 (25.3 GiB)    |
 
-[![Pie Chart](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)](https://raw.githubusercontent.com/floft/all-the-papers/master/pie.png)
+[![Chart](https://raw.githubusercontent.com/floft/all-the-papers/master/bar.png)](https://raw.githubusercontent.com/floft/all-the-papers/master/bar.png)
