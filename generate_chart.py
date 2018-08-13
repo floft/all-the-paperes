@@ -141,9 +141,9 @@ def autolabel(ax, rects, yerr=None):
                 '%.1f' % height,
                 ha='center', va='bottom')
 
-def barplot(fracs, labels, save_name=None):
+def barplot(fracs, labels, colors=None, save_name=None):
     assert len(fracs) == len(labels)
-    colors = ["xkcd:orange", "xkcd:teal", "xkcd:darkgreen", "xkcd:orchid", "xkcd:blue", "xkcd:indigo"]
+    #colors = ["xkcd:orange", "xkcd:teal", "xkcd:darkgreen", "xkcd:orchid", "xkcd:blue", "xkcd:indigo"]
     
     fig, ax = plt.subplots(1,1,figsize=(8, 4))
     rects = []
@@ -154,14 +154,20 @@ def barplot(fracs, labels, save_name=None):
     i = 0 # We only have one set of bars
     n = len(labels)
     x = np.array(range(n), dtype=np.float)
-    rects.append(ax.bar(x + i*width + i*margin, fracs, width))
+    if colors is not None:
+        rects.append(ax.bar(x + i*width + i*margin, fracs, width, color=colors))
+    else:
+        rects.append(ax.bar(x + i*width + i*margin, fracs, width))
     autolabel(ax, rects[-1])
-    ax.set_ylim([0,max(fracs)+1])
+    ax.set_ylim([0,max(fracs)+5])
         
-    plt.xticks(x, labels, rotation=40, fontsize=12)
-    #ax.set_xticks(x + width) # Offset if more than one set
+    plt.xticks(x, labels, rotation=50, fontsize=12)
+    ax.set_xticks(x - width/2)
     plt.ylabel("%")
     plt.title("Percent of GAN Papers Including Terms")
+
+    # Assuming highest is generative and lowest is TL
+    ax.legend((rects[-1][0], rects[-1][-1]), ('Generation/Synthesis', 'Related to Transfer Learning'))
 
     if save_name is not None:
         plt.savefig(save_name+".png", bbox_inches='tight')
@@ -173,6 +179,7 @@ if __name__ == '__main__':
     # Paths to pdfgrep output
     grepGAN = 'grep/gan.txt'
     grepTL = 'grep/tl.txt'
+    grepGen = 'grep/generative.txt'
 
     # Where to save lists
     listdir = 'list'
@@ -180,6 +187,13 @@ if __name__ == '__main__':
     # Read data
     df_gan = pd.read_csv(grepGAN, sep='\x00', names=['Filename','Match'])
     df_tl = pd.read_csv(grepTL, sep='\x00', names=['Filename','Term'])
+    df_gen = pd.read_csv(grepGen, sep='\x00', names=['Filename','Term'])
+
+    # Ignore some generative terms
+    df_gen = df_gen[
+            (df_gen['Term'].str.lower() != 'image completion') & \
+            (df_gen['Term'].str.lower() != 'semantic segmentation') & \
+            (df_gen['Term'].str.lower() != 'style transfer')]
 
     # Pick one set of TL terms
     df_tl['Term'] = replace(df_tl['Term'], {
@@ -187,32 +201,59 @@ if __name__ == '__main__':
         'multi task learning':    'multi-task learning',
         'multidomain learning':   'multi-domain learning',
         'multi domain learning':  'multi-domain learning',
-        'self taught learning':  'self-taught learning',
+        'self taught learning':   'self-taught learning',
         'co-variate shift':       'covariate shift',
         'sample selection bias':  'sample-selection bias',
         'life long learning':     'life-long learning',
         })
+
+    # Pick one set of generative terms
+    df_gen['Term'] = replace(df_gen['Term'], {
+        #'image generation':       'image generation',
+        'generation of images':   'image generation',
+        'image synthesis':        'image generation',
+        'super-resolution':       'super resolution',
+        })
+
+    # "image generation" or "image synthesis" should be included in
+    # "generation", so duplicate (later we'll remove duplicates)
+    rows = df_gen[df_gen['Term'] == 'image generation']
+    rows['Term'] = rows['Term'].str.lower().replace('image generation', 'generation')
+    df_gen = pd.concat([df_gen, rows], ignore_index=True)
 
     #
     # Get GAN papers that also mention TL terms
     #
     gan = df_gan['Filename'].unique()
     tl = df_tl['Filename'].unique()
+    gen = df_gen['Filename'].unique()
     ganCount = len(gan)
     tlCount = len(tl)
+    genCount = len(gen)
+
+    # Generative terms in GAN papers
+    gen_both = df_gen.loc[df_gen['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    genPapers = gen_both['Filename'].unique()
+    gangenCount = len(genPapers)
+    gen_terms = gen_both['Term'].unique()
 
     # Pie chart of how many GAN papers include a mention of each of these terms
     both = df_tl.loc[df_tl['Filename'].isin(df_gan['Filename'])].drop_duplicates()
-    papers = both['Filename'].unique()
-    gantlCount = len(papers)
+    tlPapers = both['Filename'].unique()
+    gantlCount = len(tlPapers)
     terms = both['Term'].unique()
 
     termCounts = {}
-    for t in terms:
+    for t in terms: # TL
+        termCounts[t] = 0
+    for t in gen_terms: # Generative
         termCounts[t] = 0
 
-    for p in papers:
+    for p in tlPapers: # TL
         for t in both[both['Filename']==p]['Term']:
+            termCounts[t] += 1
+    for p in genPapers: # Generative
+        for t in gen_both[gen_both['Filename']==p]['Term']:
             termCounts[t] += 1
 
     fracs = [c/ganCount for c in termCounts.values()]
@@ -220,12 +261,16 @@ if __name__ == '__main__':
     labels = [cap(l) for l in labels]
     fracs, labels = zip(*sorted(zip(fracs, labels), reverse=True)) # Sort
     #pie(fracs, labels, "pie")
-    barplot([f*100 for f in fracs], labels, save_name="bar")
+    # See: https://matplotlib.org/users/dflt_style_changes.html
+    colors = ['#1f77b4' if l.lower() in gen_terms else '#d62728' for l in labels]
+    barplot([f*100 for f in fracs], labels, colors, save_name="bar")
 
     # Print counts of papers
     print("GAN Papers:", ganCount)
     print("TL Papers:", tlCount)
+    print("Generative Papers:", genCount)
     print("GAN & TL Papers:", gantlCount)
+    print("GAN & Generative Papers:", gangenCount)
 
     # Print percentages
     print()
@@ -234,16 +279,18 @@ if __name__ == '__main__':
         print(" ",labels[i],"-","%.1f%%"%(fracs[i]*100))
 
     # Pie chart showing of the GAN papers how many include any of the TL terms
-    includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
-    includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
+    #includeTermsFracs = [(ganCount-gantlCount)/ganCount, gantlCount/ganCount]
+    #includeTermsLabels = ['No TL Terms', 'Include TL Term(s)']
     #pie(includeTermsFracs, includeTermsLabels, "pie_terms")
 
-    title1="GAN Papers Mentioning Transfer Learning"
-    title2="Transfer Learning Terms"
-    pieCombined(
-            includeTermsFracs, includeTermsLabels, title1,
-            fracs, labels, title2,
-            "pie")
+    # Note: this is wrong now since the terms don't just include TL terms but
+    #       others like "image generation"
+    #title1="GAN Papers Mentioning Transfer Learning"
+    #title2="Transfer Learning Terms"
+    #pieCombined(
+    #        includeTermsFracs, includeTermsLabels, title1,
+    #        fracs, labels, title2,
+    #        "pie")
 
     #
     # Output filenames for each of them
@@ -251,23 +298,27 @@ if __name__ == '__main__':
     if not os.path.exists(listdir):
         os.makedirs(listdir)
 
-    # When a single PDF (multiple rows) has multiple terms, join them to be
-    # like: ("pdfName", "term1, term2, term3")
-    grouped = df_tl.drop_duplicates().groupby('Filename').apply(lambda x: pd.Series({
-            'Term': ', '.join(x['Term'].sort_values())
-        })).reset_index()
-    both_grouped = grouped.loc[grouped['Filename'].isin(df_gan['Filename'])].drop_duplicates()
-    assert len(both_grouped) == len(papers), "Somehow grouped length different than overlap papers length"
-
-    with open(os.path.join(listdir, 'overlap.txt'), 'w') as f:
-        for index, row in both_grouped.iterrows():
-            f.write(row['Filename']+'\t'+row['Term']+'\n')
     with open(os.path.join(listdir, 'gan.txt'), 'w') as f:
         for e in gan:
             f.write(e+'\n')
     with open(os.path.join(listdir, 'tl.txt'), 'w') as f:
         for e in tl:
             f.write(e+'\n')
+    with open(os.path.join(listdir, 'generative.txt'), 'w') as f:
+        for e in gen:
+            f.write(e+'\n')
+
+    # When a single PDF (multiple rows) has multiple terms, join them to be
+    # like: ("pdfName", "term1, term2, term3")
+    tl_grouped = df_tl.drop_duplicates().groupby('Filename').apply(lambda x: pd.Series({
+            'Term': ', '.join(x['Term'].sort_values())
+        })).reset_index()
+    tl_both_grouped = tl_grouped.loc[tl_grouped['Filename'].isin(df_gan['Filename'])].drop_duplicates()
+    assert len(tl_both_grouped) == len(tlPapers), "Somehow tl_grouped length different than overlap papers length"
+
+    with open(os.path.join(listdir, 'overlap.txt'), 'w') as f:
+        for index, row in tl_both_grouped.iterrows():
+            f.write(row['Filename']+'\t'+row['Term']+'\n')
 
     """
     pie(both['Term'], save_name='pie', pandas=True)

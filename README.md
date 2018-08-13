@@ -28,13 +28,16 @@ Optionally, look through all the overlap papers.
 |:-----------|:---------------------|
 | GAN        | 500                  |
 | TL         | 1,210                |
+| Generative | 2,708                |
 | GAN & TL   | 92                   |
+| GAN & Gen. | 324                  |
 | *(Total)*  | 16,644 (25.3 GiB)    |
 
 Of the 500 papers referring to GANs, this figure shows how many of those papers
-also include terms related to transfer learning. Based on searching the first
-three pages of each of the 16,644 available papers published in AAAI, ACL,
-AISTATS, CVPR, ICLR, ICML, IJCAI, JMLR, and NIPS between January 2014 and
-August 2018.
+also include terms related to transfer learning. For comparison, the use for
+generation (or synthesis) such as image generation and super resolution are
+also included. Results are based on searching the first three pages of each of
+the 16,644 available papers published in AAAI, ACL, AISTATS, CVPR, ICLR, ICML,
+IJCAI, JMLR, and NIPS between January 2014 and August 2018.
 
 [![Chart](https://raw.githubusercontent.com/floft/all-the-papers/master/bar.png)](https://raw.githubusercontent.com/floft/all-the-papers/master/bar.png)
