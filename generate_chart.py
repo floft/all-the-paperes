@@ -167,7 +167,7 @@ def barplot(fracs, labels, colors=None, save_name=None):
     plt.title("Percent of GAN Papers Including Terms")
 
     # Assuming highest is generative and lowest is TL
-    ax.legend((rects[-1][0], rects[-1][-1]), ('Generation/Synthesis', 'Related to Transfer Learning'))
+    ax.legend((rects[-1][0], rects[-1][-1]), ('Generation', 'Related to Transfer Learning'))
 
     if save_name is not None:
         plt.savefig(save_name+".png", bbox_inches='tight')
@@ -206,6 +206,7 @@ if __name__ == '__main__':
         #'image generation':       'image generation',
         'generation of images':   'image generation',
         'image synthesis':        'image generation',
+        #'synthesis':              'generation',
         'super-resolution':       'super resolution',
         })
 
@@ -214,6 +215,7 @@ if __name__ == '__main__':
             (df_gen['Term'].str.lower() != 'image completion') & \
             (df_gen['Term'].str.lower() != 'semantic segmentation') & \
             (df_gen['Term'].str.lower() != 'super resolution') & \
+            (df_gen['Term'].str.lower() != 'synthesis') & \
             (df_gen['Term'].str.lower() != 'style transfer')]
 
     # "image generation" or "image synthesis" should be included in
