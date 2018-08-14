@@ -189,12 +189,6 @@ if __name__ == '__main__':
     df_tl = pd.read_csv(grepTL, sep='\x00', names=['Filename','Term'])
     df_gen = pd.read_csv(grepGen, sep='\x00', names=['Filename','Term'])
 
-    # Ignore some generative terms
-    df_gen = df_gen[
-            (df_gen['Term'].str.lower() != 'image completion') & \
-            (df_gen['Term'].str.lower() != 'semantic segmentation') & \
-            (df_gen['Term'].str.lower() != 'style transfer')]
-
     # Pick one set of TL terms
     df_tl['Term'] = replace(df_tl['Term'], {
         'multitask learning':     'multi-task learning',
@@ -214,6 +208,13 @@ if __name__ == '__main__':
         'image synthesis':        'image generation',
         'super-resolution':       'super resolution',
         })
+
+    # Ignore some generative terms
+    df_gen = df_gen[
+            (df_gen['Term'].str.lower() != 'image completion') & \
+            (df_gen['Term'].str.lower() != 'semantic segmentation') & \
+            (df_gen['Term'].str.lower() != 'super resolution') & \
+            (df_gen['Term'].str.lower() != 'style transfer')]
 
     # "image generation" or "image synthesis" should be included in
     # "generation", so duplicate (later we'll remove duplicates)
